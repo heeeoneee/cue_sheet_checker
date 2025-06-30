@@ -41,13 +41,26 @@ drive_service = build("drive", "v3", credentials=creds)
 
 # 📄 데이터 준비
 spreadsheet = gc.open_by_key("11zYr2RK27OFRRL5iTX9BN7UyQgwP5TB2qnTb-l9Davw")
-source_sheet = spreadsheet.worksheet("8.14(목)")
+sheet_name = "8.14(목)"
+source_sheet = spreadsheet.worksheet(sheet_name)
 data = source_sheet.get_all_values()
 participants = ["남윤범", "안가현", "이희언", "김지혜"]
 group_starts = [6, 9, 12, 15, 18, 21]
 header_rows = data[1:3]
 body_rows = data[3:]
-folder_id = "1E7qIyPd9DCu1Mhgc5haevO4r-CVusTQT"
+
+# 📁 요일별 폴더 매핑
+day_tag = sheet_name.split("(")[-1].strip(")")
+day_folder_map = {
+    "수": "1pPZ82GHrFb4HxMOyRxhnFWddp0vOHJ74",
+    "목": "1xALX7GS0PuqpCgfiqkApPABthniSDmoy",  
+    "금": "1CRsyJlPCqW7eSA2Cn_lsD3W6qTOIizJk",  
+    "토": "19gdA0OTvQ7sZBGvgxvsh-9Bq2BXP-yS5",  
+    "일": "1n6zRW-V8XUDUOSucAxecB9ps2jzdSLxF"   
+}
+folder_id = day_folder_map.get(day_tag)
+if not folder_id:
+    raise ValueError(f"❌ Unknown day tag: {day_tag}")
 
 # 📦 상태 변수
 success_list = []
@@ -139,13 +152,14 @@ def make_sheet_file(name):
                 new_row += [row[s], mark(row[s+1]), mark(row[s+2])]
             result.append(new_row)
 
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-        sheet_name_str = datetime.now().strftime("%Y%m%d_%H%M")
-        sheet_title = f"{name}_Sheet_{sheet_name_str}"
+        now_full_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        now_time_str = datetime.now().strftime("%H:%M")
+        sheet_title = f"{name}_{day_tag}_{now_time_str}"
+
         new_sheet = gc.create(sheet_title)
         file_id = new_sheet.id
         sheet = new_sheet.sheet1
-        sheet.update(range_name="A1", values=[[f"{name} Sheet (Updated {now_str})"]])
+        sheet.update(range_name="A1", values=[[f"{name} Sheet (Updated {now_full_str})"]])
         sheet.update(range_name="A3", values=result)
 
         with lock:
@@ -166,7 +180,7 @@ def make_sheet_file(name):
 # ▶️ 실행
 delete_all_files_in_folder()
 
-with ThreadPoolExecutor(max_workers=2) as executor:
+with ThreadPoolExecutor(max_workers=4) as executor:
     executor.map(make_sheet_file, participants)
 
 # 📊 결과 요약
