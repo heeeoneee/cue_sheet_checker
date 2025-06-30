@@ -34,6 +34,49 @@ def authorize():
             token.write(creds.to_json())
     return creds
 
+# 🗓️ 숫자 옵션 → 실제 시트명
+sheet_options = {
+    "1": "8.13(수)",
+    "2": "8.14(목)",
+    "3": "8.15(금)",
+    "4": "8.16(토)",
+    "5": "8.17(일)"
+}
+day_tag_map = {
+    "수": "wed",
+    "목": "thu",
+    "금": "fri",
+    "토": "sat",
+    "일": "sun"
+}
+day_folder_map = {
+    "wed": "1pPZ82GHrFb4HxMOyRxhnFWddp0vOHJ74",
+    "thu": "1xALX7GS0PuqpCgfiqkApPABthniSDmoy",
+    "fri": "1CRsyJlPCqW7eSA2Cn_lsD3W6qTOIizJk",
+    "sat": "19gdA0OTvQ7sZBGvgxvsh-9Bq2BXP-yS5",
+    "sun": "1n6zRW-V8XUDUOSucAxecB9ps2jzdSLxF"
+}
+
+print("📋 Select a sheet to process:")
+for key, val in sheet_options.items():
+    print(f"{key}. {val}")
+
+while True:
+    choice = input("📌 Enter sheet number (1~5): ").strip()
+    if choice in sheet_options:
+        sheet_name = sheet_options[choice]
+        break
+    else:
+        print("❌ Invalid input. Try again.")
+
+day_kor = sheet_name.split("(")[-1].strip(")")
+day_tag = day_tag_map.get(day_kor)
+if not day_tag:
+    raise ValueError(f"❌ Unknown day tag: {day_kor}")
+folder_id = day_folder_map.get(day_tag)
+if not folder_id:
+    raise ValueError(f"❌ No folder ID mapped for day: {day_tag}")
+
 # 🌐 서비스 객체 생성
 creds = authorize()
 gc = gspread.authorize(creds)
@@ -41,7 +84,6 @@ drive_service = build("drive", "v3", credentials=creds)
 
 # 📄 데이터 준비
 spreadsheet = gc.open_by_key("11zYr2RK27OFRRL5iTX9BN7UyQgwP5TB2qnTb-l9Davw")
-sheet_name = "8.14(목)"
 source_sheet = spreadsheet.worksheet(sheet_name)
 data = source_sheet.get_all_values()
 participants = ["남윤범", "안가현", "이희언", "김지혜"]
@@ -49,22 +91,10 @@ group_starts = [6, 9, 12, 15, 18, 21]
 header_rows = data[1:3]
 body_rows = data[3:]
 
-# 📁 요일별 폴더 매핑
-day_tag = sheet_name.split("(")[-1].strip(")")
-day_folder_map = {
-    "수": "1pPZ82GHrFb4HxMOyRxhnFWddp0vOHJ74",
-    "목": "1xALX7GS0PuqpCgfiqkApPABthniSDmoy",  
-    "금": "1CRsyJlPCqW7eSA2Cn_lsD3W6qTOIizJk",  
-    "토": "19gdA0OTvQ7sZBGvgxvsh-9Bq2BXP-yS5",  
-    "일": "1n6zRW-V8XUDUOSucAxecB9ps2jzdSLxF"   
-}
-folder_id = day_folder_map.get(day_tag)
-if not folder_id:
-    raise ValueError(f"❌ Unknown day tag: {day_tag}")
-
 # 📦 상태 변수
 success_list = []
 fail_list = []
+skipped_list = []
 lock = Lock()
 created_count = 0
 moved_count = 0
@@ -125,14 +155,19 @@ def make_sheet_file(name):
         print(f"\n📝 ({index}/{len(participants)}) Generating sheet for {name}...")
 
     local_drive_service = build("drive", "v3", credentials=creds)
-    active_set_indexes = [
-        i for i, s in enumerate(group_starts)
-        if any(name in row[s+1] or name in row[s+2] for row in body_rows)
-    ]
+
+    # 정확한 역할 여부 판단 (인덱스 예외 방지 포함)
+    active_set_indexes = []
+    for i, s in enumerate(group_starts):
+        for row in body_rows:
+            if len(row) > s + 2 and (name in row[s+1] or name in row[s+2]):
+                active_set_indexes.append(i)
+                break
+
     if not active_set_indexes:
         with lock:
             print(f"⚠️ {name}: No assigned roles. Skipping.")
-            success_list.append(name)
+            skipped_list.append(name)
         return
 
     try:
@@ -149,7 +184,10 @@ def make_sheet_file(name):
             for i in active_set_indexes:
                 s = group_starts[i]
                 def mark(cell): return cell.replace(name, f"[{name}]") if name in cell else cell
-                new_row += [row[s], mark(row[s+1]), mark(row[s+2])]
+                if len(row) > s + 2:
+                    new_row += [row[s], mark(row[s+1]), mark(row[s+2])]
+                else:
+                    new_row += ["", "", ""]
             result.append(new_row)
 
         now_full_str = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -186,4 +224,5 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 # 📊 결과 요약
 print("\n📊 Summary")
 print(f"✅ Completed: {len(success_list)} → {', '.join(success_list) if success_list else 'None'}")
+print(f"⚠️ Skipped (no roles): {len(skipped_list)} → {', '.join(skipped_list) if skipped_list else 'None'}")
 print(f"❌ Failed: {len(fail_list)} → {', '.join(fail_list) if fail_list else 'None'}")
