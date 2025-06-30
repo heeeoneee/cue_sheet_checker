@@ -1,39 +1,88 @@
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
+import os
 import gspread
-from google.oauth2.service_account import Credentials
-from concurrent.futures import ThreadPoolExecutor
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 from datetime import datetime
+import time
+from concurrent.futures import ThreadPoolExecutor
 
-# 인증
-scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-credentials = Credentials.from_service_account_file("credentials.json", scopes=scopes)
-gc = gspread.authorize(credentials)
+# 필요한 범위 정의
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
 
-# 루트 큐시트 열기
+# 인증 파일 경로
+TOKEN_PATH = 'token.json'
+CREDENTIALS_PATH = 'client_secret.json'
+
+# OAuth 인증 흐름
+def authorize():
+    creds = None
+    if os.path.exists(TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open(TOKEN_PATH, 'w') as token:
+            token.write(creds.to_json())
+    return creds
+
+# 인증 객체 생성
+creds = authorize()
+gc = gspread.authorize(creds)
+drive_service = build("drive", "v3", credentials=creds)
+
+# 루트 시트 열기
 spreadsheet = gc.open_by_key("11zYr2RK27OFRRL5iTX9BN7UyQgwP5TB2qnTb-l9Davw")
 source_sheet = spreadsheet.worksheet("8.14(목)")
 data = source_sheet.get_all_values()
 
-# 참가자 이름
+# 운영위원 이름
 participants = ["남윤범", "안가현", "이희언", "김지혜"]
 
-# 역할 세트 시작 열 인덱스 (G:6, J:9, ..., X:21)
+# 각 역할 세트 시작 열 인덱스
 group_starts = [6, 9, 12, 15, 18, 21]
-
-# 헤더는 2~3행
 header_rows = data[1:3]
 body_rows = data[3:]
 
-def make_sheet(name):
-    # 포함된 세트 탐색
+# 업로드할 Google Drive 폴더 ID
+folder_id = "1E7qIyPd9DCu1Mhgc5haevO4r-CVusTQT"
+
+# 드라이브 폴더 이동 함수 (재시도 포함)
+def move_to_folder(file_id, name, max_retries=3):
+    for attempt in range(1, max_retries + 1):
+        try:
+            drive_service.files().update(
+                fileId=file_id,
+                addParents=folder_id,
+                fields="id, parents"
+            ).execute()
+            print(f"✅ {name} → 폴더 이동 완료 (시도 {attempt})")
+            return
+        except Exception as e:
+            print(f"❌ {name} 폴더 이동 실패 (시도 {attempt}): {e}")
+            time.sleep(2)
+    print(f"🔥 {name} → 최종 폴더 이동 실패")
+
+# 큐시트 생성 함수
+def make_sheet_file(name):
     active_set_indexes = [
         i for i, s in enumerate(group_starts)
         if any(name in row[s+1] or name in row[s+2] for row in body_rows)
     ]
-
     if not active_set_indexes:
-        return  # 아무 세트에도 없으면 생성 안 함
+        print(f"⚠️ {name}: 할당된 역할이 없어 시트 생성을 생략합니다.")
+        return
 
-    # 헤더 구성
     result = []
     for header_row in header_rows:
         new_header = header_row[:6]
@@ -42,30 +91,24 @@ def make_sheet(name):
             new_header += header_row[s:s+3]
         result.append(new_header)
 
-    # 본문 구성
     for row in body_rows:
         new_row = row[:6]
         for i in active_set_indexes:
             s = group_starts[i]
-            new_row += row[s:s+3]
+            def mark(cell): return cell.replace(name, f"[{name}]") if name in cell else cell
+            new_row += [row[s], mark(row[s+1]), mark(row[s+2])]
         result.append(new_row)
 
-    # 시트 갱신
-    try:
-        sheet = spreadsheet.worksheet(name)
-        spreadsheet.del_worksheet(sheet)
-    except:
-        pass
-    sheet = spreadsheet.add_worksheet(name, rows=len(result) + 2, cols=len(result[0]))
-
-    # 업데이트 시간
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    sheet.update("A1", [[f"{name} 큐시트 ({now_str} 업데이트)"]])
-    sheet.update("A3", result)
+    new_sheet = gc.create(f"{name}_큐시트")
+    file_id = new_sheet.id
+    sheet = new_sheet.sheet1
+    sheet.update(range_name="A1", values=[[f"{name} 큐시트 ({now_str} 업데이트)"]])
+    sheet.update(range_name="A3", values=result)
 
-    # 실시간 출력
-    print(f"✅ [{now_str}] {name} 시트가 업데이트되었습니다.")
+    move_to_folder(file_id, name)
+    time.sleep(1)
 
-# 병렬 실행
-with ThreadPoolExecutor(max_workers=5) as executor:
-    executor.map(make_sheet, participants)
+# 병렬 처리 (최대 2명 동시 처리)
+with ThreadPoolExecutor(max_workers=2) as executor:
+    executor.map(make_sheet_file, participants)
