@@ -16,7 +16,7 @@ OUTPUT_DIRECTORY = 'processed_csv_files'
 
 def process_csv_file(input_filepath, output_filepath):
     """
-    단일 CSV 파일을 읽어 요청된 최소 규칙에 따라 데이터를 다듬고 새로운 CSV 파일로 저장합니다.
+    단일 CSV 파일을 읽어 요청된 규칙에 따라 데이터를 다듬고 새로운 CSV 파일로 저장합니다.
     규칙:
     1. 원본 A열 제거.
     2. 원본 H열 제거.
@@ -24,7 +24,8 @@ def process_csv_file(input_filepath, output_filepath):
     4. 원본 B열에 "추가 내용"이 적힌 행부터 그 이후는 모두 제거.
        만약 "추가 내용"이 없으면, 파일의 끝까지 모든 데이터를 유지합니다.
     5. 수정된 CSV 파일의 A, B, C, D열에서 빈칸은 바로 윗 셀의 값으로 채웁니다.
-    6. 원본 B열 4행(B:4)의 프로그램 이름을 추출하여 반환합니다.
+    6. 수정된 CSV 파일의 A, B, C열 값이 위 행과 동일하면, 현재 행의 D열부터 나머지 셀은 모두 위의 셀에 수직 병합합니다.
+    7. 원본 B열 4행(B:4)의 프로그램 이름을 추출하여 반환합니다.
 
     Args:
         input_filepath (str): 원본 CSV 파일의 전체 경로.
@@ -84,7 +85,7 @@ def process_csv_file(input_filepath, output_filepath):
             num_cols_to_fill_down = 4 # A, B, C, D columns (new indices after A, H removal)
             last_values_fill_down = [None] * num_cols_to_fill_down # Stores the last non-empty value for each column
             
-            processed_rows = [] # This list will store the result after fill-down
+            rows_after_fill_down = [] # This list will store the result after fill-down
             for r_idx, row in enumerate(rows_after_col_removal):
                 current_row_for_fill = list(row) # Create a copy to modify
 
@@ -104,7 +105,49 @@ def process_csv_file(input_filepath, output_filepath):
                             # Update the last_values_fill_down for this column with the current cell's value
                             last_values_fill_down[col_idx_fill] = cell_value_fill
                 
-                processed_rows.append(current_row_for_fill) # Add the processed (filled) row to the final list
+                rows_after_fill_down.append(current_row_for_fill) # Add the processed (filled) row to the final list
+
+            # --- 6. A, B, C 컬럼 값이 위 행과 동일하다면 D열부터 나머지 셀은 모두 위의 셀에 수직 병합 ---
+            final_merged_rows = []
+            if rows_after_fill_down:
+                final_merged_rows.append(list(rows_after_fill_down[0])) # 첫 번째 행은 항상 추가 (list()로 복사하여 원본 변경 방지)
+
+                for i in range(1, len(rows_after_fill_down)):
+                    current_row = rows_after_fill_down[i]
+                    previous_row = final_merged_rows[-1] # 마지막으로 추가된 행을 previous_row로 사용
+
+                    # A, B, C 컬럼(인덱스 0, 1, 2) 비교
+                    # 비교할 컬럼이 모두 존재하는지 확인
+                    if (len(current_row) >= 3 and len(previous_row) >= 3 and
+                        current_row[0].strip() == previous_row[0].strip() and # A열 비교
+                        current_row[1].strip() == previous_row[1].strip() and # B열 비교
+                        current_row[2].strip() == previous_row[2].strip()): # C열 비교
+                        
+                        # D열(인덱스 3)부터 나머지 셀을 위의 셀에 수직 병합
+                        # previous_row와 current_row의 길이를 맞춰줍니다.
+                        max_len_for_merge = max(len(previous_row), len(current_row)) 
+                        while len(previous_row) < max_len_for_merge:
+                            previous_row.append('')
+                        while len(current_row) < max_len_for_merge: # current_row도 길이를 맞춰줍니다.
+                            current_row.append('')
+
+                        for col_idx in range(3, max_len_for_merge): # D열(인덱스 3)부터 시작
+                            current_cell_value = current_row[col_idx].strip()
+                            previous_cell_value = previous_row[col_idx].strip()
+
+                            if current_cell_value: # 현재 셀에 값이 있다면
+                                if previous_cell_value: # 이전 셀에도 값이 있다면 콤마로 연결
+                                    previous_row[col_idx] = f"{previous_cell_value}, {current_cell_value}"
+                                else: # 이전 셀이 비어있다면 현재 셀 값으로 채움
+                                    previous_row[col_idx] = current_cell_value
+                            # else: 현재 셀이 비어있다면 이전 셀 값을 그대로 유지 (아무것도 하지 않음)
+                        # 현재 행은 병합되었으므로 final_merged_rows에 추가하지 않음
+                    else:
+                        # A,B,C가 다르다면 새로운 행으로 추가 (list()로 복사하여 원본 변경 방지)
+                        final_merged_rows.append(list(current_row))
+            
+            # 최종적으로 처리된 행들을 processed_rows에 할당
+            processed_rows = final_merged_rows
 
         # Save the processed data to a new CSV file
         with open(output_filepath, 'w', newline='', encoding='utf-8') as outfile:
