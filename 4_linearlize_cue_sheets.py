@@ -60,7 +60,7 @@ try:
 
     # 최종 결과를 새로운 CSV 파일로 저장합니다.
     # 이 파일은 스크립트를 실행한 폴더(QueueSheets)에 생성됩니다.
-    processed_file_path_updated = 'helper_tasks_list_updated.csv'
+    processed_file_path_updated = 'linearlized.csv'
     tasks_df_updated.to_csv(processed_file_path_updated, index=False, encoding='utf-8-sig')
     
     print(f"✅ 데이터 정제 성공! '{processed_file_path_updated}' 파일이 생성되었습니다.")
