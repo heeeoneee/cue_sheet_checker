@@ -33,7 +33,8 @@ WORKSHEET_NAMES_TO_DOWNLOAD = [
     "8.15(금)", # 8.15(Fri)
     "8.16(토)", # 8.16(Sat)
     "8.17(일)",  # 8.17(Sun)
-    "운영위 명단"
+    "운영위 명단",
+    "도우미 명단"
 ]
 
 # --- Function Definitions ---
