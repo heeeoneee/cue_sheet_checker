@@ -52,8 +52,7 @@ target_detail_cols = [
 # 실제 데이터프레임에 존재하는 열만 필터링하여 작업 안정성 확보
 existing_target_detail_cols = [col for col in target_detail_cols if col in df_new.columns]
 
-# 첫 번째와 두 번째 열은 '조건 없이' ffill 되었으므로,
-# '일정'이 없는 경우 '-'로 채워지는 로직에서 제외해야 합니다.
+# '일정'이 없는 경우 '-'로 채워지는 로직에서 제외해야 하는 첫 두 열을 정의합니다.
 cols_to_exclude_from_dash_fill = []
 if len(df_new.columns) > 0:
     cols_to_exclude_from_dash_fill.append(df_new.columns[0])
@@ -75,6 +74,7 @@ else:
         print("경고: '일정' 컬럼이 발견되지 않아, 상세 정보 컬럼 채우기 로직이 정상적으로 동작하지 않을 수 있습니다.")
     else:
         # 모든 '일정' 컬럼이 NaN이거나 '-'인 행을 식별
+        # '일정' 컬럼은 여러 개일 수 있으므로, 모든 '일정' 컬럼이 해당 조건을 만족해야 합니다.
         is_schedule_row_empty_or_dash = (df_new[schedule_cols].isnull() | (df_new[schedule_cols] == '-')).all(axis=1)
 
         for col in existing_target_detail_cols:
@@ -88,6 +88,13 @@ else:
             else:
                 # 첫 두 열은 해당 로직에서 제외되었음을 알림 (선택 사항)
                 print(f"'{col}' 열은 첫 두 열이므로 '일정' 기준의 '-' 적용 로직에서 제외되었습니다.")
+
+# --- 5.5. 모든 남은 빈 셀을 '-'로 채우는 로직 추가 ---
+# 이전의 모든 로직이 적용된 후, 최종적으로 NaN 값을 '-'로 대체합니다.
+df_new = df_new.fillna('-')
+print("--- 모든 남은 빈 셀을 '-'로 채웠습니다. ---")
+print("\n")
+
 
 print("\n--- 최종 처리 후 DataFrame의 첫 5행 ---")
 print(df_new.head())
