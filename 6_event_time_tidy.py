@@ -11,6 +11,7 @@ input_file = sys.argv[1]
 output_file = sys.argv[2]
 
 def add_15_minutes(time_str):
+    """ 'PM 5:30'과 같은 시간 문자열을 받아 15분을 더한 뒤, 다시 문자열로 반환합니다. """
     try:
         time_obj = datetime.strptime(time_str, '%p %I:%M')
         new_time_obj = time_obj + timedelta(minutes=15)
@@ -26,8 +27,10 @@ try:
         pd.DataFrame().to_csv(output_file, index=False)
     else:
         events = []
+        # ❗ [핵심 수정] 그룹핑 조건에 '필요 도우미 수'를 추가했습니다.
         group_ids = ((df['일정'] != df['일정'].shift()) | \
-                     (df['장소'] != df['장소'].shift())).cumsum()
+                     (df['장소'] != df['장소'].shift()) | \
+                     (df['필요 도우미 수'] != df['필요 도우미 수'].shift())).cumsum()
 
         for group_id, group_df in df.groupby(group_ids):
             first_row = group_df.iloc[0]
@@ -53,9 +56,8 @@ try:
             events.append(event_info)
 
         events_df = pd.DataFrame(events)
-
-        # ❗ [핵심 수정] '시작시간'을 기준으로 데이터프레임을 올바르게 정렬합니다.
-        # 'PM 1:00' 같은 텍스트 시간을 컴퓨터가 이해할 수 있는 시간으로 변환하여 정렬합니다.
+        
+        # '시작시간'을 기준으로 데이터프레임을 올바르게 정렬합니다.
         events_df = events_df.sort_values(by='시작시간', key=lambda x: pd.to_datetime(x, format='%p %I:%M')).reset_index(drop=True)
         
         events_df.to_csv(output_file, index=False, encoding='utf-8-sig')

@@ -11,21 +11,25 @@ output_file = sys.argv[2]
 
 try:
     df = pd.read_csv(input_file)
-    
+
     if df.empty:
         print("경고: 입력 파일이 비어있어, 빈 출력 파일을 생성합니다.")
         # 빈 파일이라도 생성해야 다음 단계에서 FileNotFoundError가 나지 않음
         pd.DataFrame().to_csv(output_file, index=False)
     else:
+        # ❗ [핵심 수정] 그룹핑 조건에 '필요 도우미 수'를 추가했습니다.
         df['group_id'] = ((df['일정'] != df['일정'].shift()) | \
-                          (df['장소'] != df['장소'].shift())).cumsum()
+                          (df['장소'] != df['장소'].shift()) | \
+                          (df['필요 도우미 수'] != df['필요 도우미 수'].shift())).cumsum()
 
         indices_to_keep = []
 
         for name, group in df.groupby('group_id'):
             if len(group) <= 2:
+                # 그룹의 작업이 2개 이하면 모두 유지합니다.
                 indices_to_keep.extend(group.index)
             else:
+                # 그룹의 작업이 3개 이상이면, 첫 번째와 마지막 작업만 유지합니다.
                 indices_to_keep.append(group.index[0])
                 indices_to_keep.append(group.index[-1])
 
@@ -41,4 +45,4 @@ except FileNotFoundError:
     sys.exit(1)
 except Exception as e:
     print(f"데이터 처리 중 오류가 발생했습니다: {e}")
-    sys.exit(1) # ❗ [핵심 수정] 실패 시 종료 코드 1 반환
+    sys.exit(1)
