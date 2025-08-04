@@ -59,7 +59,14 @@ def run_smart_merge_tool():
     df_base_tasks['merge_key'] = df_base_tasks[merge_keys].astype(str).agg('-'.join, axis=1)
     df_new['merge_key'] = df_new[merge_keys].astype(str).agg('-'.join, axis=1)
 
-    # --- 변경 사항 식별 ---
+    if '배정된 도우미' in df_new.columns:
+        df_new_structure = df_new.drop(columns=['배정된 도우미'])
+    else:
+        df_new_structure = df_new
+
+    merged_df = pd.merge(df_new_structure, df_base_tasks[['merge_key', '배정된 도우미']], on='merge_key', how='left')
+    merged_df['배정된 도우미'] = merged_df['배정된 도우미'].fillna('')
+    
     added_rows, modified_rows, unchanged_rows, deleted_rows = [], [], [], []
     
     for index, base_row in df_base_tasks.iterrows():
@@ -71,7 +78,9 @@ def run_smart_merge_tool():
         else:
             new_row = new_row_match.iloc[0]
             is_different = False
+            # ❗ [핵심 수정] 비교 기준에 '종료시간' 추가
             compare_cols = ['시작시간', '종료시간', '일정', '장소', '필요 도우미 수']
+            
             for col in compare_cols:
                 if col == '필요 도우미 수':
                     if parse_helpers_needed(new_row[col]) != parse_helpers_needed(base_row[col]):
@@ -86,38 +95,39 @@ def run_smart_merge_tool():
 
     added_rows = df_new[~df_new['merge_key'].isin(df_base_tasks['merge_key'])].to_dict('records')
 
-    # --- ❗ [핵심 수정] 사용자에게 변경 내역을 하나씩 확인받는 로직 ---
+    # --- 변경 내역 미리보기 및 사용자 승인 ---
     print("\n" + "="*70)
     print("                🔍 변경 사항 확인 및 적용 🔍")
     print("="*70)
 
-    final_rows = unchanged_rows # 변경 없는 내용은 먼저 추가
+    final_rows = [row.to_dict() for row in unchanged_rows]
     
-    # 수정된 작업 확인
     if modified_rows:
         print("\n[🟠 수정된 작업]\n")
         all_mod = False
         for item in modified_rows:
             schedule_name = str(item['기존']['일정']).replace('\n', ' ')
             print(f"  - ({item['기존']['시작시간']}) {schedule_name}")
-            print(f"    (기존) 필요인원: {item['기존']['필요 도우미 수']} -> (변경) 필요인원: {item['변경']['필요 도우미 수']}")
+            # ❗ [핵심 수정] 변경된 내용을 더 상세하게 보여주도록 개선
+            if str(item['기존']['종료시간']) != str(item['변경']['종료시간']):
+                print(f"    (시간 변경) {item['기존']['종료시간']} -> {item['변경']['종료시간']}")
+            if parse_helpers_needed(item['기존']['필요 도우미 수']) != parse_helpers_needed(item['변경']['필요 도우미 수']):
+                print(f"    (인원 변경) {item['기존']['필요 도우미 수']} -> {item['변경']['필요 도우미 수']}")
             
             if not all_mod:
                 confirm = input("    이 변경사항을 적용하시겠습니까? (y/n/all) >> ").lower().strip()
                 if confirm == 'all': all_mod = True
             
             if all_mod or confirm == 'y':
-                # 변경된 내용에 기존 배정 인원을 합쳐서 추가
                 new_row_with_assignment = item['변경'].copy()
                 new_row_with_assignment['배정된 도우미'] = item['기존']['배정된 도우미']
-                final_rows.append(new_row_with_assignment)
+                final_rows.append(new_row_with_assignment.to_dict())
                 print("    -> ✅ 적용됨")
             else:
-                final_rows.append(item['기존']) # 기존 내용 유지
+                final_rows.append(item['기존'].to_dict())
                 print("    -> ❌ 변경 취소됨")
             print()
 
-    # 추가된 작업 확인
     if added_rows:
         print("\n[⚪ 추가된 작업]\n")
         all_add = False
@@ -130,14 +140,13 @@ def run_smart_merge_tool():
                 if confirm == 'all': all_add = True
 
             if all_add or confirm == 'y':
-                row['배정된 도우미'] = '' # 배정된 도우미 칸 비우기
+                row['배정된 도우미'] = ''
                 final_rows.append(row)
                 print("    -> ✅ 추가됨")
             else:
                 print("    -> ❌ 추가 취소됨")
             print()
 
-    # 삭제된 작업 확인
     if deleted_rows:
         print("\n[🗑️  삭제된 작업]\n")
         all_del = False
@@ -150,16 +159,15 @@ def run_smart_merge_tool():
                 if confirm == 'all': all_del = True
 
             if all_del or confirm == 'y':
-                print("    -> ✅ 삭제됨") # 아무것도 추가하지 않음
+                print("    -> ✅ 삭제됨")
             else:
-                final_rows.append(row) # 삭제하지 않고 기존 내용 유지
+                final_rows.append(row.to_dict())
                 print("    -> ❌ 삭제 취소됨")
             print()
 
     # --- 최종 파일 생성 ---
     final_df = pd.DataFrame(final_rows)
     
-    # 초과 인원 자동 정리
     trimmed_info = []
     for index, row in final_df.iterrows():
         needed_count = parse_helpers_needed(row['필요 도우미 수'])
@@ -177,11 +185,9 @@ def run_smart_merge_tool():
             print(info)
         print("------------------------------------")
 
-    # 시설조가 있었다면 다시 합치기
     if not facility_crew_base.empty:
         final_df = pd.concat([final_df, facility_crew_base], ignore_index=True)
 
-    # merge_key가 있다면 제거
     if 'merge_key' in final_df.columns:
         final_df = final_df.drop(columns=['merge_key'])
 
