@@ -30,6 +30,23 @@ API 및 서비스 > 사용자 인증 정보로 이동합니다.
 
 #### 로컬 파이썬 환경
 로컬 환경에서는 구글 클라이언트 라이브러리가 credentials.json 파일을 이용해 인증을 처리합니다.
+
+#### credentials.json에 있는 client_email을 드라이브에 등록하기(편집자 권한으로)
+{
+  "type": 
+  "project_id":
+  "private_key_id": 
+  "private_key":
+  "client_email": "sheet-bot@queuesheetsmaker.iam.gserviceaccount.com",
+  "client_id": 
+  "auth_uri": 
+  "token_uri": 
+  "auth_provider_x509_cert_url": 
+  "client_x509_cert_url": 
+  "universe_domain": "googleapis.com"
+}
+
+
 ##### 필수 라이브러리 설치:
 ```Bash
 pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
