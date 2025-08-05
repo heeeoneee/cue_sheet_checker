@@ -1,0 +1,78 @@
+# 스케줄 분석 및 검색 도구: 실행 방법
+
+이 프로그램은 CSV 형식의 스케줄 표를 분석하여 인력 배치를 돕는 도구입니다.
+
+## 실행 순서
+
+### 0\. 환경 준비
+구글 드라이브 및 스프레드시트 API를 로컬 환경에서 사용하려면 인증 설정을 통해 credentials.json 파일을 발급받아야 합니다. 과정은 다음과 같습니다.
+
+
+#### API 설정 절차
+Google Cloud의 프로젝트에서 특정 API 사용을 허용하고, 내 애플리케이션(로컬 스크립트)이 사용자 데이터에 접근할 수 있도록 허락을 받는 과정입니다.
+
+#### Google Cloud Console 접속 및 프로젝트 생성
+Google Cloud Console에 접속하여 새 프로젝트를 생성하거나 기존 프로젝트를 선택합니다.
+
+#### API 활성화
+왼쪽 메뉴에서 API 및 서비스 > 라이브러리로 이동합니다.
+Google Drive API와 Google Sheets API를 각각 검색하여 '사용' 버튼을 눌러 활성화합니다.
+
+#### 사용자 인증 정보(Credentials) 생성
+API 및 서비스 > 사용자 인증 정보로 이동합니다.
+상단의 **'+ 사용자 인증 정보 만들기' > 'OAuth 2.0 클라이언트 ID'**를 선택합니다.
+'애플리케이션 유형'으로 **'데스크톱 앱'**을 선택하고 이름을 지정한 후 '만들기'를 클릭합니다.
+
+#### credentials.json 파일 다운로드
+생성이 완료되면 목록에 새로 만든 '데스크톱 앱' 클라이언트가 나타납니다.
+오른쪽 끝에 있는 **다운로드 아이콘(↓)**을 클릭하여 credentials.json 파일을 다운로드합니다.
+이 파일을 파이썬 스크립트가 있는 로컬 프로젝트 폴더로 이동시킵니다.
+
+#### 로컬 파이썬 환경
+로컬 환경에서는 구글 클라이언트 라이브러리가 credentials.json 파일을 이용해 인증을 처리합니다.
+##### 필수 라이브러리 설치:
+```Bash
+pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+```
+
+##### 실행 및 인증:
+credentials.json 파일이 있는 상태에서 파이썬 스크립트를 최초로 실행하면, 자동으로 웹 브라우저가 열립니다.
+브라우저에서 API 접근을 허용할 구글 계정으로 로그인하고, 권한 요청에 **'허용'**을 클릭합니다.
+인증이 완료되면 로컬 폴더에 token.json(또는 token.pickle) 파일이 생성되며, 다음 실행부터는 이 토큰을 사용해 자동으로 인증이 이루어집니다.
+
+### 1\. 파일 경로 수정
+
+스크립트 코드 하단의 `if __name__ == "__main__":` 부분을 찾습니다. **본인의 컴퓨터 환경에 맞게** 2개의 CSV 파일 경로를 수정해야 합니다.
+
+```python
+if __name__ == "__main__":
+    # ▼▼▼ 이 두 줄의 파일 경로를 반드시 수정하세요 ▼▼▼
+    schedule_file = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 명단.csv'
+    helper_list_file = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 배정용.csv'
+    
+    analyze_and_search(schedule_file, helper_list_file)
+```
+
+
+### 2\. 터미널에서 실행
+
+파일 경로 수정 후, 터미널(명령 프롬프트, PowerShell 등)에서 아래 명령어를 입력해 스크립트를 실행합니다.
+
+```bash
+sh 1_import_all_sheets.py
+python schedule_check.py
+```
+파이썬 버전은 크게 상관 없어보이지만, 제가 쓰는 버전은 Python 3.12.10 입니다.
+
+
+### 3\. 검색 기능 사용
+
+"schedule_check.py"가 실행되면, 겹치는 분석 결과가 나온 후 검색어 입력창이 나타납니다. 아래 형식에 맞춰 검색어를 입력하세요.
+
+  * **개인 일정 검색**: `이름`
+      * 예시: `홍길동`
+  * **특정 시점 가능 인원 검색**: `요일 시간`
+      * 예시: `금 10:00`
+  * **특정 기간 가능 인원 검색**: `요일 시작시간 종료시간`
+      * 예시: `토 13:00 15:30`
+  * **종료**: `종료` 또는 `exit`

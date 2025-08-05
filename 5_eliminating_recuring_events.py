@@ -19,7 +19,6 @@ try:
     else:
         # ❗ [핵심 수정] 그룹핑 조건에 '필요 도우미 수'를 추가했습니다.
         df['group_id'] = ((df['일정'] != df['일정'].shift()) | \
-                          (df['장소'] != df['장소'].shift()) | \
                           (df['필요 도우미 수'] != df['필요 도우미 수'].shift())).cumsum()
 
         indices_to_keep = []

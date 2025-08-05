@@ -28,13 +28,9 @@ OUTPUT_DIRECTORY = 'initial_csv_files'
 
 # List of worksheet names to download (based on your screenshot)
 WORKSHEET_NAMES_TO_DOWNLOAD = [
-    "8.13(수)", # 8.13(Wed)
-    "8.14(목)", # 8.14(Thu)
-    "8.15(금)", # 8.15(Fri)
-    "8.16(토)", # 8.16(Sat)
-    "8.17(일)",  # 8.17(Sun)
     "운영위 명단",
-    "도우미 명단"
+    "도우미 명단",
+    "도우미 배정용"
 ]
 
 # --- Function Definitions ---

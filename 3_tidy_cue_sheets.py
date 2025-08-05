@@ -28,7 +28,7 @@ try:
         df_new[col_name] = df_new[col_name].ffill()
 
     target_detail_cols = [
-        "장소", "세부 내용", "재료", "담당자\n(프로그램 팀원 명)",
+        "일정","장소", "세부 내용", "재료", "담당자\n(프로그램 팀원 명)",
         "필요 도우미 수", "도우미 역할\n(최대한 구체적으로)", "배정된 도우미 이름"
     ]
     target_detail_cols = [col.strip() for col in target_detail_cols]
