@@ -1,0 +1,2 @@
+python Google_SpreadSheets_Importing_files/1_import_all_sheets.py
+python Google_SpreadSheets_Importing_files/1_import_all_sheets.py2_chopping_name_sheets.py

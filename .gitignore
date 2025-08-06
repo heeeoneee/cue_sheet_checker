@@ -5,4 +5,9 @@ token.json
 queuesheetsmaker-1505a6a800f7.json
 queuesheetsmaker-c0917fdd11c2.json
 Personal_cue_sheets/credentials.json
-
+Personal_cue_sheets/data/
+Personal_cue_sheets/output/
+Personal_cue_sheets/token.pickle
+ind_cue_sheets/
+output/
+venv/
