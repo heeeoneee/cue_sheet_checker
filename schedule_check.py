@@ -109,7 +109,7 @@ def analyze_and_search(schedule_path: str, helpers_list_path: str):
             for row in reader:
                 if len(row) < len(header) or not row[0].strip():
                     continue
-                day, start_str, end_str, event, helpers_str = row[0], row[1], row[2], row[3], row[10]
+                day, start_str, end_str, event, helpers_str = row[0], row[1], row[2], row[4], row[11]
                 start_time, end_time = parse_time(start_str), parse_time(end_str)
                 
                 cleaned_helpers = parse_helpers(helpers_str)
@@ -247,7 +247,7 @@ def analyze_and_search(schedule_path: str, helpers_list_path: str):
 
 if __name__ == "__main__":
     # ❗ 사용자의 환경에 맞게 파일 경로를 수정해주세요.
-    schedule_file = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 배정용.csv'
+    schedule_file = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 배정용서기용.csv'
     helper_list_file = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 명단.csv'
     
     analyze_and_search(schedule_file, helper_list_file)

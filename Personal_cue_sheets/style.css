@@ -1,0 +1,63 @@
+/* [수정] PDF 용지를 가로 방향으로 설정합니다. */
+@page {
+    size: A4 landscape;
+}
+
+/* --- 폰트 설정 --- */
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('fonts/NanumGothic.ttf') format('truetype');
+}
+
+/* --- 기본 스타일 --- */
+body {
+    font-family: 'NanumGothic', sans-serif;
+    line-height: 1.6;
+    margin: 30px;
+    color: #333;
+}
+
+h1 {
+    color: #0056b3;
+    border-bottom: 2px solid #0056b3;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+/* --- 표 스타일 --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    /* [수정] 글씨 크기를 8pt로 줄입니다. */
+    font-size: 8pt; 
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px 10px;
+    text-align: left;
+    word-break: break-all;
+}
+
+thead th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    color: #555;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+    background-color: #e6f7ff;
+}
+
+/* --- 바닥글 스타일 --- */
+.footer {
+    margin-top: 40px;
+    text-align: right;
+    font-size: 8pt;
+    color: #999;
+}
