@@ -1,2 +1,4 @@
-python Google_SpreadSheets_Importing_files/1_import_all_sheets.py
-python Google_SpreadSheets_Importing_files/1_import_all_sheets.py2_chopping_name_sheets.py
+python /Users/heeeonlee/2025KYSA/Google_SpreadSheets_Importing_files/1_import_all_sheets.py
+python /Users/heeeonlee/2025KYSA/Google_SpreadSheets_Importing_files/2_chopping_name_sheets.py
+
+python /Users/heeeonlee/2025KYSA/cue_sheet_checker/2_schedule_check.py

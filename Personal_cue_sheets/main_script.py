@@ -10,8 +10,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # --- 설정 ---
-CUESHEET_FILE = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 배정용서기용.csv'
-HELPERS_FILE = '/Users/heeeonlee/2025KYSA/QueueSheets/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 명단.csv'
+CUESHEET_FILE = '/Users/heeeonlee/2025KYSA/cue_sheet_checker/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 배정용서기용.csv'
+HELPERS_FILE = '/Users/heeeonlee/2025KYSA/cue_sheet_checker/initial_csv_files/2025 KYSA 운영위원 통합 큐시트_도우미 명단.csv'
 OUTPUT_FOLDER = 'output'
 PARENT_FOLDER_ID = '1aCox5dOJcpePxGleo9qPAJBvAhOGWk74'
 SCOPES = ['https://www.googleapis.com/auth/drive']

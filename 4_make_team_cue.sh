@@ -1,0 +1,1 @@
+python /Users/heeeonlee/2025KYSA/cue_sheet_checker/team_cue_sheets/main_script.py
